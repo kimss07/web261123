@@ -1,0 +1,17 @@
+<!-- 1. 검색창: <div class="toolbar"> 바로 다음 줄에 배치 -->
+<input id="q" type="search" placeholder="영화 제목 검색">
+
+<!-- 2. 정렬 선택 상자: onchange="applySort()" 속성 제거 -->
+<select id="sort">
+  <option value="title">제목순</option>
+  <option value="year">연도순</option>
+  <option value="rating">평점순</option>
+</select>
+
+<!-- 5. 찜 개수: <p id="count"></p> 바로 다음 줄에 배치 -->
+<p id="count"></p>
+<p>찜 <span id="likeCount">0</span>편</p>
+
+<!-- 6. 빈 결과 문구: <section class="board" id="board"></section> 바로 다음 줄에 배치 -->
+<section class="board" id="board"></section>
+<p class="state-empty">조건에 맞는 영화가 없습니다.</p>
