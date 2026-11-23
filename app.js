@@ -1,20 +1,18 @@
 // app.js : 영화 보드 렌더링, 검색, 정렬, 찜(이벤트 위임) / 김성수(2651010) / 12주차
 
-// 10주차 유틸 함수 유지: 포스터 경로, 크기 ⇒ TMDB 이미지 주소
 const posterUrl = (path, size = "w342") => {
     if (!path) return "";
     if (path.startsWith("http")) return path;
     return `https://image.tmdb.org/t/p/${size}${path}`;
 };
 
-// 10주차 유틸 함수 유지: 날짜 문자열 ⇒ 올해까지 몇 년
 const yearsSince = dateStr => {
     const currentYear = new Date().getFullYear();
     const releaseYear = new Date(dateStr).getFullYear();
     return currentYear - releaseYear;
 };
 
-// 선택 상자(#sort) 값에 따라 새 배열을 정렬해 반환(원본 movies는 유지)
+// 선택 상자(#sort) 값에 따라 정렬된 새 배열 반환(원본 movies 유지)
 function sortBy(list, key, descending = false) {
     const copy = [...list];
     copy.sort((a, b) => {
@@ -22,7 +20,7 @@ function sortBy(list, key, descending = false) {
         if (key === "rating") {
             comparison = a.rating - b.rating;
         } else if (key === "year") {
-            comparison = String(a.year).localeCompare(String(b.year));
+            comparison = a.year - b.year;
         } else {
             comparison = String(a.title).localeCompare(String(b.title), "ko");
         }
@@ -45,29 +43,25 @@ function renderCards(list) {
     if (!board) return;
 
     if (countEl) {
-        countEl.textContent = `총 ${list.length}편`;
+        countEl.textContent = `${list.length}편`;
     }
 
-    board.innerHTML = list.map(m => {
-        const imgSrc = m.poster ? posterUrl(m.poster, "w342") : (m.posterUrl || "");
-        return `
-            <article class="card">
-                <img class="poster" src="${imgSrc}" alt="${m.title}">
-                <span class="badge">${m.rating}</span>
-                <div class="info">
-                    <h3>${m.title}</h3>
-                    <p class="year">${m.year}</p>
-                    <button class="like" type="button">♥</button>
-                    <p class="overview">${m.overview || ""}</p>
-                </div>
-            </article>
-        `;
-    }).join("");
+    board.innerHTML = list.map(m => `
+        <article class="card">
+            <img class="poster" src="${posterUrl(m.poster, "w342")}" alt="${m.title}">
+            <span class="badge">${m.rating}</span>
+            <div class="info">
+                <h3>${m.title}</h3>
+                <p class="year">${m.date || m.year}</p>
+                <button class="like" type="button">♥</button>
+            </div>
+        </article>
+    `).join("");
 
     // 5단계: 다시 그릴 때도 찜 개수 동기화
     updateLikeCount();
 
-    // 6단계: 결과가 0건이면 .board에 is-empty 클래스 부여
+    // 6단계: 결과가 0건이면 .board에 is-empty 클래스 추가
     if (list.length === 0) {
         board.classList.add("is-empty");
     } else {
@@ -88,7 +82,7 @@ function applySort() {
     renderCards(getView());
 }
 
-// 최초 화면 렌더링
+// 최초 렌더링
 renderCards(getView());
 
 // (가) 단계 1 & 3: 검색창 입력 시마다 검색 + 정렬 결과로 다시 그리기
@@ -99,8 +93,8 @@ document.getElementById("q").addEventListener("input", () => {
 // 단계 2: 정렬 선택 상자 change 이벤트 연결(괄호 없이 함수 전달)
 document.getElementById("sort").addEventListener("change", applySort);
 
-// 단계 7: 일반 함수(function)의 this는 리스너가 붙은 요소(.board)를 가리키지만, 화살표 함수(=>)의 this는 상위 스코프를 따르므로
-// 클릭된 실제 요소는 화살표 함수와 일반 함수 모두 e.target으로 확인합니다.
+// 단계 7: 일반 함수(function)의 this는 리스너가 등록된 요소(.board)를 가리키지만, 화살표 함수(=>)의 this는 상위 스코프를 따르므로
+// 클릭된 요소는 두 방식 모두 e.target으로 확인합니다.
 document.querySelector(".board").addEventListener("click", (e) => {
     if (e.target.classList.contains("like")) {
         e.target.classList.toggle("liked");
