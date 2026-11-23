@@ -1,52 +1,117 @@
-// renderCards 내부 카드 템플릿 예시(<p class="year"> 다음 줄에 버튼 추가)
-// <p class="year">${m.year}</p>
-// <button class="like" type="button">♥</button>
+// app.js : 영화 보드 렌더링, 검색, 정렬, 찜(이벤트 위임) / 김성수(2651010) / 12주차
 
-// renderCards 맨 끝부분에 추가
-updateLikeCount();
+// 10주차 유틸 함수 유지: 포스터 경로, 크기 ⇒ TMDB 이미지 주소
+const posterUrl = (path, size = "w342") => {
+    if (!path) return "";
+    if (path.startsWith("http")) return path;
+    return `https://image.tmdb.org/t/p/${size}${path}`;
+};
 
-const boardEl = document.querySelector(".board");
-if (list.length === 0) {
-  boardEl.classList.add("is-empty");
-} else {
-  boardEl.classList.remove("is-empty");
+// 10주차 유틸 함수 유지: 날짜 문자열 ⇒ 올해까지 몇 년
+const yearsSince = dateStr => {
+    const currentYear = new Date().getFullYear();
+    const releaseYear = new Date(dateStr).getFullYear();
+    return currentYear - releaseYear;
+};
+
+// 선택 상자(#sort) 값에 따라 새 배열을 정렬해 반환(원본 movies는 유지)
+function sortBy(list, key, descending = false) {
+    const copy = [...list];
+    copy.sort((a, b) => {
+        let comparison = 0;
+        if (key === "rating") {
+            comparison = a.rating - b.rating;
+        } else if (key === "year") {
+            comparison = String(a.year).localeCompare(String(b.year));
+        } else {
+            comparison = String(a.title).localeCompare(String(b.title), "ko");
+        }
+        return descending ? -comparison : comparison;
+    });
+    return copy;
 }
-// (나) 검색과 정렬을 한 번에 처리하는 함수(단계 3)
+
+// 5단계: 현재 화면에 표시된 찜(.liked) 개수를 #likeCount에 반영
+function updateLikeCount() {
+    const likeCountEl = document.getElementById("likeCount");
+    if (!likeCountEl) return;
+    likeCountEl.textContent = document.querySelectorAll(".liked").length;
+}
+
+// 영화 카드 목록을 #board에 그리기
+function renderCards(list) {
+    const board = document.getElementById("board");
+    const countEl = document.getElementById("count");
+    if (!board) return;
+
+    if (countEl) {
+        countEl.textContent = `총 ${list.length}편`;
+    }
+
+    board.innerHTML = list.map(m => {
+        const imgSrc = m.poster ? posterUrl(m.poster, "w342") : (m.posterUrl || "");
+        return `
+            <article class="card">
+                <img class="poster" src="${imgSrc}" alt="${m.title}">
+                <span class="badge">${m.rating}</span>
+                <div class="info">
+                    <h3>${m.title}</h3>
+                    <p class="year">${m.year}</p>
+                    <button class="like" type="button">♥</button>
+                    <p class="overview">${m.overview || ""}</p>
+                </div>
+            </article>
+        `;
+    }).join("");
+
+    // 5단계: 다시 그릴 때도 찜 개수 동기화
+    updateLikeCount();
+
+    // 6단계: 결과가 0건이면 .board에 is-empty 클래스 부여
+    if (list.length === 0) {
+        board.classList.add("is-empty");
+    } else {
+        board.classList.remove("is-empty");
+    }
+}
+
+// (나) 단계 3: 검색어로 거른 뒤 선택 상자(#sort) 기준으로 정렬한 새 배열 반환
 function getView() {
-  const keyword = document.getElementById("q").value.trim().toLowerCase();
-  const found = movies.filter((m) => m.title.toLowerCase().includes(keyword));
-  const key = document.getElementById("sort").value;
-  return sortBy(found, key, key !== "title");
+    const keyword = document.getElementById("q").value.trim().toLowerCase();
+    const found = movies.filter(m => m.title.toLowerCase().includes(keyword));
+    const key = document.getElementById("sort").value;
+    return sortBy(found, key, key !== "title");
 }
 
-// (가) 검색창 입력 이벤트: 글자를 칠 때마다 검색 + 정렬 결과로 다시 그리기(단계 1, 3)
+// 단계 2 & 3: 정렬 변경 시 검색 결과도 유지하며 다시 그리기
+function applySort() {
+    renderCards(getView());
+}
+
+// 최초 화면 렌더링
+renderCards(getView());
+
+// (가) 단계 1 & 3: 검색창 입력 시마다 검색 + 정렬 결과로 다시 그리기
 document.getElementById("q").addEventListener("input", () => {
-  renderCards(getView());
+    renderCards(getView());
 });
 
-// 정렬 선택 상자 변경 이벤트: 괄호 없이 applySort 함수 참조 전달(단계 2, 3)
+// 단계 2: 정렬 선택 상자 change 이벤트 연결(괄호 없이 함수 전달)
 document.getElementById("sort").addEventListener("change", applySort);
 
-// 찜 개수 갱신 함수(단계 5)
-function updateLikeCount() {
-  document.getElementById("likeCount").textContent =
-    document.querySelectorAll(".liked").length;
-}
-
-// 단계 7 요구사항: 일반 함수(function)와 화살표 함수(=>)의 this 차이 주석
-// 1) 일반 함수(function (e)) 리스너에서 this는 이벤트가 등록된 요소(.board)를 가리킵니다.
-// 2) 화살표 함수((e) =>)에서는 상위 스코프의 this를 물려받으므로 .board가 아닐 수 있으며, 실제 클릭된 버튼은 e.target으로 확인합니다.
+// 단계 7: 일반 함수(function)의 this는 리스너가 붙은 요소(.board)를 가리키지만, 화살표 함수(=>)의 this는 상위 스코프를 따르므로
+// 클릭된 실제 요소는 화살표 함수와 일반 함수 모두 e.target으로 확인합니다.
 document.querySelector(".board").addEventListener("click", (e) => {
-  if (e.target.classList.contains("like")) {
-    e.target.classList.toggle("liked");
-    updateLikeCount();
-  }
+    if (e.target.classList.contains("like")) {
+        e.target.classList.toggle("liked");
+        updateLikeCount();
+    }
 });
 
-// 단계 8: 검색창에서 Escape 키를 누르면 검색어 초기화 후 전체/정렬 목록 다시 그리기
+// 단계 8: 검색창에서 Escape 키를 누르면 검색어를 비우고 전체/정렬 목록 다시 그리기
 document.getElementById("q").addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    e.target.value = "";
-    renderCards(getView());
-  }
+    if (e.key === "Escape") {
+        e.target.value = "";
+        renderCards(getView());
+    }
 });
